@@ -8,6 +8,16 @@ import matplotlib.pyplot as plt
 from .cnn import get_cnn
 import re
 
+'''added code'''
+from typing import DefaultDict
+import pydot
+import os
+from collections import defaultdict
+
+
+
+global_it = 0
+global_b = ''
 class RDTC(nn.Module):
     def __init__(self, num_classes,
                  dataset, decision_size=2, max_iters=30, attribute_size=20,
@@ -26,6 +36,8 @@ class RDTC(nn.Module):
         self.threshold = threshold              # 1
 
         self.stats = defaultdict(list)
+
+        self.treelist = []
 
         assert decision_size == 2 or (decision_size > 2 and self.attribute_coef == 0.), \
             'Attribute loss only supported for decision_size == 2'
@@ -302,6 +314,7 @@ class RDTC(nn.Module):
         # Perform categorical feature selection
         selection_logits = self.question_mlp(lstm_out) 
         # selection_logits: torch.Size([128, 312])
+  
 
         if self.training:
             hard_selection = F.gumbel_softmax(selection_logits, hard=True,
@@ -315,35 +328,62 @@ class RDTC(nn.Module):
         # Get single decision
 
         decision = (hard_selection.unsqueeze(2) * binary_features) 
+  
         # decision: torch.Size([128, 312, 2])
 
         # Index of decision
         attribute_idx = hard_selection.max(dim=1)[1]
+       
         # attribute_idx: 128
         
         '''Added code'''
 
         image_id = 0
+        saved_decision = decision
+        # print(f"{decision.shape}")
+        # print(5/0)
         #print(attribute_idx[image_id])
-        decision_array = decision[image_id,:,:].cpu().detach().numpy()
 
-        decision_index = np.argmax(decision_array.sum(1))
+        # for each img in batch
+       
 
-        decision_for_attribute = decision[image_id,decision_index,:].cpu().detach().numpy()
+        for c in range (0,int(decision.shape[0])):
+            image_id = c
+            decision = saved_decision
+            decision_array = decision[image_id,:,:].cpu().detach().numpy()
 
-        decision_value = 0
-        if decision_for_attribute[0] == 1:
-        	decision_value = 1
+            decision_index = np.argmax(decision_array.sum(1))
 
-        f = open("data/cub/attributes.txt", "r")
-        for i, line in enumerate(f):
-        	if(i==attribute_idx[image_id]-1):
-        		attribute_name = line[3:]
-        print("Attribute_name:{}, decision:{}\n".format(attribute_name,decision_value))
-        f.close()
+            decision_for_attribute = decision[image_id,decision_index,:].cpu().detach().numpy()
+        
+            decision_value = 0
+            if decision_for_attribute[0] == 1:
+                decision_value = 1
+        
+            attribute_name = ""
+            f = open("data/cub/attributes.txt", "r")
+            for i, line in enumerate(f):
+                if(i==attribute_idx[image_id]-1):
+                    attribute_name = line[3:]
+            attribute_name = attribute_name.replace('\n','')
+            attribute_name = attribute_name.replace(" ","")
+            # print("Attribute_name:{}, decision:{}\n".format(attribute_name,decision_value))
+            f.close()
+    
+            # with open ("data/cub/decision_tree/decision_tree_data.txt","a") as w:
+            #     b = attribute_name.replace('\n','')
+            #     b = attribute_name.replace(" ","")
+            #     tab = "\t"
+            #     w.write(f"global batch:{global_it}{tab}img:{image_id}{tab}{str(decision_value==1)}{tab}{b}")
+            # w.close()
+            
+            # global global_b
+            # global_b = b
+            # self.treelist[global_it].add_node(image_id,decision_value==1)
+            decision = decision.view(-1, self.attribute_size * self.decision_size)   
+            # decision: torch.Size([128, 624])
 
-        decision = decision.view(-1, self.attribute_size * self.decision_size)   
-        # decision: torch.Size([128, 624])
+
 
         return decision, attribute_idx
 
@@ -391,7 +431,7 @@ class RDTC(nn.Module):
 
     def recurrent_decision_tree(self, binary_features, labels): 
     	# Outputs for every iteration
-
+        
     	# Parameters: 
     	#	binary_features: torch.Size([128, 312, 2])
     	# 	labels: torch.Size([128])
@@ -480,16 +520,28 @@ class RDTC(nn.Module):
         tensor_image = tensor_image.permute(1, 2, 0)
         tensor_image = tensor_image.cpu().detach().numpy()
 
-        # tensor_label = labels[0].cpu().detach().numpy()
-        # print(tensor_label)
+        tensor_label = labels[0].cpu().detach().numpy()
+        print(labels.shape)
+        print(labels)
+        print(5/0)
 
-        # plt.imshow(tensor_image)
-        # plt.show()
-
+        plt.imshow(tensor_image)
+        plt.show()
+        global global_it
+        self.treelist.append(Visualize_Tree(f"{global_it}"))
+        # self.treelist.append(Visualize_Tree(f"{global_it}"))
+        # self.treelist.append(Visualize_Tree(f"{global_it}"))
+        # self.treelist.append(Visualize_Tree(f"{global_it}"))
+        # self.treelist.append(Visualize_Tree(f"{global_it}"))
+        # self.treelist.append(Visualize_Tree(f"{global_it}"))
+        # self.treelist.append(Visualize_Tree(f"{global_it}"))
+        # self.treelist.append(Visualize_Tree(f"{global_it}"))
+        
         # binary_features(attributes or features)?
         binary_features, bin_attribute_logits = self.attribute_based_learner(images)    
         # binary_features: torch.Size([128, 312, 2])
         # bin_attribute_logits: torch.Size([128, 312])
+
 
         classification, attribute_idx, thres_mask = self.recurrent_decision_tree(      
                 binary_features, labels
@@ -498,10 +550,52 @@ class RDTC(nn.Module):
         # attribute_idx: 25
         # thres_mask: None (for evaluation)
 
+        
+
         if thres_mask is not None:
             self.update_pruning_stats(thres_mask)
 
         loss = self.compute_loss(labels, classification, attribute_idx,
                                  bin_attribute_logits)
 
+ 
+        global_it +=1
         return classification, loss
+
+class Visualize_Tree():
+    def __init__(self,image_name) -> None:
+        os.environ["PATH"] += os.pathsep + r"C:\Users\diego\anaconda3\envs\rdtc\Lib\site-packages"
+        self.graph = pydot.Dot('my_graph', graph_type='graph', bgcolor='white')
+        self.image_name= image_name
+        self.nodes = 0
+        self.attribute_id = defaultdict(lambda: len(self.attribute_id))
+        
+
+    def add_node(self,attribute_name,attribute_bool):
+        #update attribute        
+        self.attribute_id[attribute_name]
+
+        #get current attribute id
+        current_id = self.attribute_id[attribute_name]
+
+        # global global_b
+        my_node = pydot.Node(current_id, label=attribute_name)        
+        self.graph.add_node(my_node)        
+
+        self.attribute_name = attribute_name
+        self.attribute_bool = attribute_bool
+
+        #make edge when node is already there
+        if len(self.attribute_id) >1:            
+            self.add_edge(self.previous_id,current_id)
+        
+        self.previous_id = current_id
+
+    def add_edge(self,previous_id,current_id):
+        
+        my_edge = pydot.Edge(previous_id,current_id,label=self.attribute_bool)
+        self.graph.add_edge(my_edge)
+     
+        if len(self.attribute_id )>=6:
+            self.graph.write_png(f'data/cub/decision_tree/img{self.attribute_name}output.png')
+       

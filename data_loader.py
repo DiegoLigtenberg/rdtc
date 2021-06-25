@@ -10,7 +10,7 @@ DATASETS = ['cub', 'awa2']
 
 
 class DataLoader(object):
-    def __init__(self, dataset='awa2'):     # dataset='cub'
+    def __init__(self, dataset='awa2'):
         assert dataset in DATASETS
         self.dataset = dataset
 
@@ -41,27 +41,21 @@ class DataLoader(object):
         train_dataset = dataset_class(root=root,
                                       train=True,
                                       transform=transform_train,
-                                      download=True)    
-        # train_dataset: 5994
+                                      download=True)
 
         test_dataset = dataset_class(root=root,
                                      train=False,
-                                     transform=transform_test)   
-        # test_dataset: 5794
+                                     transform=transform_test)
 
-    
-        val_size = int(len(train_dataset) * 0.1)    
-        # val_size: 599
-        train_size = len(train_dataset) - val_size  
-        # train_size: 5395
-    
+        val_size = int(len(train_dataset) * 0.1)
+        train_size = len(train_dataset) - val_size
+
         train_dataset, val_dataset = torch.utils.data.dataset.random_split(train_dataset, [train_size, val_size])
 
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                    batch_size=batch_size,
                                                    shuffle=True,
-                                                   num_workers=num_workers)     
-        # batch_size=128, num_workers=8
+                                                   num_workers=num_workers)
 
         val_loader = torch.utils.data.DataLoader(dataset=val_dataset,
                                                  batch_size=batch_size,
@@ -86,10 +80,10 @@ class CUB(Dataset):
 
     def __init__(self, root, train=True, transform=None, normalize=True,
                  download=None):
-        self.root = os.path.join(root, 'cub')   # ./data
+        self.root = os.path.join(root, 'cub')
         self.train = train
         self.transform = transform
-        self.data_dir = os.path.join(self.root, 'images')   # ./data/images
+        self.data_dir = os.path.join(self.root, 'images')
 
         train_test_split = pd.read_csv(os.path.join(self.root, 'train_test_split.txt'),
                                        sep=' ', index_col=0, header=None)
@@ -102,12 +96,10 @@ class CUB(Dataset):
                                      sep=' ', index_col=0, header=None)
 
         raw_mtx = np.loadtxt(os.path.join(self.root,
-                                          self.attribute_file))    
-        # raw_mtx: 200,312
+                                          self.attribute_file))
         raw_mtx[raw_mtx == -1] = 0
         raw_mtx = raw_mtx / raw_mtx.max()
-        self.attribute_mtx = torch.tensor(raw_mtx, dtype=torch.float)   
-        # self.attribute_mtx: torch.Size([200, 312])
+        self.attribute_mtx = torch.tensor(raw_mtx, dtype=torch.float)
 
     def __len__(self):
         return len(self.img_ids)
