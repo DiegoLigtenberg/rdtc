@@ -77,8 +77,8 @@ class Trainer:
                         label_name = line[3:]
 
                 print("\nGround truth class: {}\n".format(label_name))
-                plt.imshow(tensor_image)
-                plt.show()
+                # plt.imshow(tensor_image)
+                # plt.show()
                 f1.close()
 
 

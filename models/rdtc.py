@@ -346,42 +346,61 @@ class RDTC(nn.Module):
 
         # for each img in batch
        
+        '''iterating for each image in batch'''
+        # for c in range (0,int(decision.shape[0])):
+        # image_id = c
+        # decision = saved_decision
+        decision_array = decision[image_id,:,:].cpu().detach().numpy()
 
-        for c in range (0,int(decision.shape[0])):
-            image_id = c
-            decision = saved_decision
-            decision_array = decision[image_id,:,:].cpu().detach().numpy()
+        decision_index = np.argmax(decision_array.sum(1))
 
-            decision_index = np.argmax(decision_array.sum(1))
-
-            decision_for_attribute = decision[image_id,decision_index,:].cpu().detach().numpy()
-        
-            decision_value = 0
-            if decision_for_attribute[0] == 1:
-                decision_value = 1
-        
-            attribute_name = ""
-            f = open("data/cub/attributes.txt", "r")
-            for i, line in enumerate(f):
-                if(i==attribute_idx[image_id]-1):
-                    attribute_name = line[3:]
-            attribute_name = attribute_name.replace('\n','')
-            attribute_name = attribute_name.replace(" ","")
-            # print("Attribute_name:{}, decision:{}\n".format(attribute_name,decision_value))
-            f.close()
+        decision_for_attribute = decision[image_id,decision_index,:].cpu().detach().numpy()
     
-            # with open ("data/cub/decision_tree/decision_tree_data.txt","a") as w:
-            #     b = attribute_name.replace('\n','')
-            #     b = attribute_name.replace(" ","")
-            #     tab = "\t"
-            #     w.write(f"global batch:{global_it}{tab}img:{image_id}{tab}{str(decision_value==1)}{tab}{b}")
-            # w.close()
-            
-            # global global_b
-            # global_b = b
-            # self.treelist[global_it].add_node(image_id,decision_value==1)
-            decision = decision.view(-1, self.attribute_size * self.decision_size)   
-            # decision: torch.Size([128, 624])
+        decision_value = 0
+        if decision_for_attribute[0] == 1:
+            decision_value = 1
+        import csv
+        attribute_name = ""
+
+        names = []
+        
+        f = open("data/cub/attributes.txt", "r")
+        for i, line in enumerate(f):
+
+            #attribute is in
+            if(i==attribute_idx[image_id]-1):
+                attribute_name = line[3:].replace('\n','').replace(" ","")
+                # names.append(attribute_name)
+                self.values[i] = 1
+            #attribute is not same
+            else:
+                None
+                # attribute_name = line[3:].replace('\n','').replace(" ","")
+                # # names.append(attribute_name)
+                # values.append(0)
+
+  
+                
+
+        
+        attribute_name = attribute_name.replace('\n','')
+        attribute_name = attribute_name.replace(" ","")
+        # print("Attribute_name:{}, decision:{}\n".format(attribute_name,decision_value))
+        f.close()
+
+        with open ("data/cub/decision_tree/decision_tree_data.txt","a") as w:
+            b = attribute_name.replace('\n','')
+            b = attribute_name.replace(" ","")
+            tab = "\t"
+
+            w.write(f"global batch:{global_it}{tab}img:{image_id}{tab}{str(decision_value==1)}{tab}{b}")
+        w.close()
+        
+        # global global_b
+        # global_b = b
+        # self.treelist[global_it].add_node(image_id,decision_value==1)
+        decision = decision.view(-1, self.attribute_size * self.decision_size)   
+        # decision: torch.Size([128, 624])
 
 
 
@@ -431,7 +450,7 @@ class RDTC(nn.Module):
 
     def recurrent_decision_tree(self, binary_features, labels): 
     	# Outputs for every iteration
-        
+        self.values = np.zeros(312)
     	# Parameters: 
     	#	binary_features: torch.Size([128, 312, 2])
     	# 	labels: torch.Size([128])
@@ -476,29 +495,55 @@ class RDTC(nn.Module):
 
             image_id = 0
             classification_image = classification[image_id,:].cpu().detach().numpy()
-            #predicted_class_id = np.argmax(classification_image)
+            predicted_class_id = np.argmax(classification_image)
 
             top_prediciton_ids = classification_image.argsort()[-3:][::-1]
             top_predictions_values = classification_image[top_prediciton_ids]
             normalized_top_predictions_values = top_predictions_values/np.sum(top_predictions_values)
 
             class_names = []
+            predicted_class = ''
+            trueclass=''
             f1 = open("data/cub/classes.txt", "r")
-            for i, line in enumerate(f1):
-            	class_name = line[3:-1]
-            	pattern = r'[0-9]'
-            	class_name = re.sub(pattern, '', class_name)
-            	class_name = class_name.replace('.','')
-            	class_names.append(class_name) 
-
-            	#if(i==predicted_class_id):
-            		#predicted_class = line[3:]
+            # for i, line in enumerate(f1):
+            # 	class_name = line[3:-1]
+            # 	pattern = r'[0-9]'
+            # 	class_name = re.sub(pattern, '', class_name)
+            # 	class_name = class_name.replace('.','')
+            # 	class_names.append(class_name) 
+            # 	if i==predicted_class_id:
+            # 		predicted_class = line[3:]
+            #     if i == labels[0]:
+            #         trueclass = line[3:]
+            #         print("trueclass:",trueclass)            
+            for i,line in enumerate(f1):
+                class_name = line[3:-1]
+                pattern = r'[0-9]'
+                class_name = re.sub(pattern,'',class_name)
+                class_name = class_name.replace('.','')
+                class_names.append(class_name)
+                if i ==predicted_class_id:
+                    predicted_class = line[3:]
+                if i == int(labels[0]):
+                    trueclass = line[3:]
+                    trueclass_id = int(labels[0])
+                    # print("trueclass:",trueclass,labels[0])
 
             top_classes = [class_names[k] for k in top_prediciton_ids]
-            print(top_classes, normalized_top_predictions_values)		
-            #print("Predicted class: {}\n".format(predicted_class))
+            # print(top_classes, normalized_top_predictions_values)		
+            # print("Predicted class: {}\n".format(predicted_class))
             all_classifications.append(classification)
             all_attribute_idx.append(attribute_idx)
+
+            
+        
+        import csv
+        #added 
+        with open ("data/cub/decision_tree/decision.csv","a",newline="") as file:
+            writer = csv.writer(file)
+            values = list(self.values)
+            values.append(trueclass_id) #index of true class id.
+            writer.writerow(values)
 
         return all_classifications, all_attribute_idx, all_threshold_masks # 25, 25, None
 
@@ -521,12 +566,12 @@ class RDTC(nn.Module):
         tensor_image = tensor_image.cpu().detach().numpy()
 
         tensor_label = labels[0].cpu().detach().numpy()
-        print(labels.shape)
-        print(labels)
-        print(5/0)
+        # print(labels.shape)
+        # print(labels)
+        # print(5/0)
 
-        plt.imshow(tensor_image)
-        plt.show()
+        # plt.imshow(tensor_image)
+        # plt.show()
         global global_it
         self.treelist.append(Visualize_Tree(f"{global_it}"))
         # self.treelist.append(Visualize_Tree(f"{global_it}"))
