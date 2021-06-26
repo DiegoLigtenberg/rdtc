@@ -16,7 +16,7 @@ from collections import defaultdict
 
 
 
-global_it = 0
+
 global_b = ''
 class RDTC(nn.Module):
     def __init__(self, num_classes,
@@ -34,6 +34,7 @@ class RDTC(nn.Module):
         self.tau_target = tau_target            # 0.5
         self.max_iters = max_iters              # 25
         self.threshold = threshold              # 1
+        self.global_it = 0
 
         self.stats = defaultdict(list)
 
@@ -215,12 +216,18 @@ class RDTC(nn.Module):
     def apply_threshold(self, classification, threshold_mask, threshold_classification):
 
         above_thres = (F.softmax(classification, dim=1).max(dim=1)[0] > self.threshold)
+   
         new_thres = (above_thres.int() - threshold_mask.int()).clamp(0., 1.).bool()
         threshold_classification[new_thres] = classification[new_thres]
         threshold_mask = threshold_mask | above_thres
         classification[threshold_mask] = threshold_classification[threshold_mask]
-
-        return classification, threshold_mask, threshold_classification
+        from itertools import groupby
+        prune = True
+        for j in threshold_mask:
+            if j != True:
+                prune = False
+  
+        return classification, threshold_mask, threshold_classification,prune
 
     def compute_loss(self, labels, classifications, attribute_idx,
                      bin_attribute_logits=None):
@@ -363,13 +370,12 @@ class RDTC(nn.Module):
         attribute_name = ""
 
         names = []
-        
+        self.values = np.zeros([312])
         f = open("data/cub/attributes.txt", "r")
         for i, line in enumerate(f):
-
             #attribute is in
             if(i==attribute_idx[image_id]-1):
-                attribute_name = line[3:].replace('\n','').replace(" ","")
+                attribute_name = line[3:].replace(" ","")
                 # names.append(attribute_name)
                 self.values[i] = 1
             #attribute is not same
@@ -377,28 +383,27 @@ class RDTC(nn.Module):
                 None
                 # attribute_name = line[3:].replace('\n','').replace(" ","")
                 # # names.append(attribute_name)
-                # values.append(0)
-
-  
-                
+                # values.append(0)                
 
         
-        attribute_name = attribute_name.replace('\n','')
-        attribute_name = attribute_name.replace(" ","")
+        # attribute_name = attribute_name.replace('\n','')
+        # attribute_name = attribute_name.replace(" ","")
         # print("Attribute_name:{}, decision:{}\n".format(attribute_name,decision_value))
         f.close()
 
         with open ("data/cub/decision_tree/decision_tree_data.txt","a") as w:
-            b = attribute_name.replace('\n','')
-            b = attribute_name.replace(" ","")
+            # b = attribute_name.replace('\n','')
+            # b = attribute_name.replace(" ","")
+            self.b = attribute_name.replace(":","")
             tab = "\t"
-
-            w.write(f"global batch:{global_it}{tab}img:{image_id}{tab}{str(decision_value==1)}{tab}{b}")
+            #skips few images in batch 1
+            if(self.global_it >=1):
+                w.write(f"global batch:{self.global_it}{tab}img:{image_id}{tab}{str(decision_value==1)}{tab}{self.b}")
         w.close()
         
-        # global global_b
-        # global_b = b
-        # self.treelist[global_it].add_node(image_id,decision_value==1)
+        if(self.global_it >=1):
+            self.treelist[self.global_it].add_node(self.b,decision_value==1,self.global_it,self.trueclass,self.top_prediction_values)
+
         decision = decision.view(-1, self.attribute_size * self.decision_size)   
         # decision: torch.Size([128, 624])
 
@@ -489,9 +494,10 @@ class RDTC(nn.Module):
             if not self.training and self.threshold < 1.:
                 all_threshold_masks.append(threshold_mask.clone())
 
-                classification, threshold_mask, threshold_classification = self.apply_threshold(
-                    classification, threshold_mask, threshold_classification
+                classification, threshold_mask, threshold_classification,prune = self.apply_threshold(
+                    classification, threshold_mask, threshold_classification             
                 )
+                self.prune = prune
 
             image_id = 0
             classification_image = classification[image_id,:].cpu().detach().numpy()
@@ -501,21 +507,15 @@ class RDTC(nn.Module):
             top_predictions_values = classification_image[top_prediciton_ids]
             normalized_top_predictions_values = top_predictions_values/np.sum(top_predictions_values)
 
+            self.top_prediction_values = top_predictions_values
+
+
             class_names = []
             predicted_class = ''
             trueclass=''
-            f1 = open("data/cub/classes.txt", "r")
-            # for i, line in enumerate(f1):
-            # 	class_name = line[3:-1]
-            # 	pattern = r'[0-9]'
-            # 	class_name = re.sub(pattern, '', class_name)
-            # 	class_name = class_name.replace('.','')
-            # 	class_names.append(class_name) 
-            # 	if i==predicted_class_id:
-            # 		predicted_class = line[3:]
-            #     if i == labels[0]:
-            #         trueclass = line[3:]
-            #         print("trueclass:",trueclass)            
+            self.trueclass = ''
+         
+            f1 = open("data/cub/classes.txt", "r")           
             for i,line in enumerate(f1):
                 class_name = line[3:-1]
                 pattern = r'[0-9]'
@@ -527,24 +527,32 @@ class RDTC(nn.Module):
                 if i == int(labels[0]):
                     trueclass = line[3:]
                     trueclass_id = int(labels[0])
-                    # print("trueclass:",trueclass,labels[0])
+                    print("trueclass:",trueclass,labels[0])
+                    self.trueclass = trueclass
+
+                
 
             top_classes = [class_names[k] for k in top_prediciton_ids]
             # print(top_classes, normalized_top_predictions_values)		
             # print("Predicted class: {}\n".format(predicted_class))
+            # print("iteration",j)
             all_classifications.append(classification)
             all_attribute_idx.append(attribute_idx)
 
-            
-        
+                
+            # if self.prune:
+            #     break
         import csv
         #added 
+        '''
         with open ("data/cub/decision_tree/decision.csv","a",newline="") as file:
             writer = csv.writer(file)
             values = list(self.values)
             values.append(trueclass_id) #index of true class id.
             writer.writerow(values)
+        '''
 
+        
         return all_classifications, all_attribute_idx, all_threshold_masks # 25, 25, None
 
     # def tensor_to_PIL(tensor): 
@@ -572,15 +580,8 @@ class RDTC(nn.Module):
 
         # plt.imshow(tensor_image)
         # plt.show()
-        global global_it
-        self.treelist.append(Visualize_Tree(f"{global_it}"))
-        # self.treelist.append(Visualize_Tree(f"{global_it}"))
-        # self.treelist.append(Visualize_Tree(f"{global_it}"))
-        # self.treelist.append(Visualize_Tree(f"{global_it}"))
-        # self.treelist.append(Visualize_Tree(f"{global_it}"))
-        # self.treelist.append(Visualize_Tree(f"{global_it}"))
-        # self.treelist.append(Visualize_Tree(f"{global_it}"))
-        # self.treelist.append(Visualize_Tree(f"{global_it}"))
+    
+        self.treelist.append(Visualize_Tree(f"{self.global_it}"))
         
         # binary_features(attributes or features)?
         binary_features, bin_attribute_logits = self.attribute_based_learner(images)    
@@ -604,7 +605,7 @@ class RDTC(nn.Module):
                                  bin_attribute_logits)
 
  
-        global_it +=1
+        self.global_it +=1
         return classification, loss
 
 class Visualize_Tree():
@@ -616,7 +617,7 @@ class Visualize_Tree():
         self.attribute_id = defaultdict(lambda: len(self.attribute_id))
         
 
-    def add_node(self,attribute_name,attribute_bool):
+    def add_node(self,attribute_name,attribute_bool,global_it):
         #update attribute        
         self.attribute_id[attribute_name]
 
@@ -630,9 +631,15 @@ class Visualize_Tree():
         self.attribute_name = attribute_name
         self.attribute_bool = attribute_bool
 
+        self.global_it = global_it
+
         #make edge when node is already there
         if len(self.attribute_id) >1:            
             self.add_edge(self.previous_id,current_id)
+
+            # my_edge = pydot.Edge(self.previous_id,current_id,label=self.attribute_bool)
+            # self.graph.add_edge(my_edge)           
+            # self.graph.write_png(f'data/cub/decision_tree/img{self.attribute_name}output.png')
         
         self.previous_id = current_id
 
@@ -641,6 +648,6 @@ class Visualize_Tree():
         my_edge = pydot.Edge(previous_id,current_id,label=self.attribute_bool)
         self.graph.add_edge(my_edge)
      
-        if len(self.attribute_id )>=6:
-            self.graph.write_png(f'data/cub/decision_tree/img{self.attribute_name}output.png')
+       
+        #self.graph.write_png(f'data/cub/decision_tree/img{self.global_it}output.png')
        
