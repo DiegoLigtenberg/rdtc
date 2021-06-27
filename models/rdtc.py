@@ -35,6 +35,7 @@ class RDTC(nn.Module):
         self.max_iters = max_iters              # 25
         self.threshold = threshold              # 1
         self.global_it = 0
+        self.prune = False
 
         self.stats = defaultdict(list)
 
@@ -402,7 +403,7 @@ class RDTC(nn.Module):
         w.close()
         
         if(self.global_it >=1):
-            self.treelist[self.global_it].add_node(self.b,decision_value==1,self.global_it,self.trueclass,self.top_prediction_values)
+            self.treelist[self.global_it].add_node(self.b,decision_value==1,self.global_it,self.prune,str(self.it))
 
         decision = decision.view(-1, self.attribute_size * self.decision_size)   
         # decision: torch.Size([128, 624])
@@ -503,12 +504,21 @@ class RDTC(nn.Module):
             classification_image = classification[image_id,:].cpu().detach().numpy()
             predicted_class_id = np.argmax(classification_image)
 
+            #top 3 and top all
             top_prediciton_ids = classification_image.argsort()[-3:][::-1]
-            top_predictions_values = classification_image[top_prediciton_ids]
-            normalized_top_predictions_values = top_predictions_values/np.sum(top_predictions_values)
+            all_prediction_ids = classification_image.argsort()[::][::-1]
 
+            top_predictions_values = np.exp2(classification_image[top_prediciton_ids])
+            top_predictions_values_all = np.exp2(classification_image[all_prediction_ids][classification_image[all_prediction_ids] >0]) #make difference more distinct
+            # print(top_predictions_values_all)
+            # print(top_predictions_values_all)
+            # print((top_predictions_values/np.sum(top_predictions_values_all)))
+            # print(top_predictions_values_all.shape)
+            # normalized_top_predictions_values = top_predictions_values/np.sum(top_predictions_values)
+            #scaled for all images with positive score (not only the 3 )
+            normalized_top_predictions_values = top_predictions_values/np.sum(top_predictions_values_all)
             self.top_prediction_values = top_predictions_values
-
+            self.it = str(j)
 
             class_names = []
             predicted_class = ''
@@ -517,7 +527,8 @@ class RDTC(nn.Module):
          
             f1 = open("data/cub/classes.txt", "r")           
             for i,line in enumerate(f1):
-                class_name = line[3:-1]
+                class_name = line[3:-1],
+                
                 pattern = r'[0-9]'
                 class_name = re.sub(pattern,'',class_name)
                 class_name = class_name.replace('.','')
@@ -527,13 +538,18 @@ class RDTC(nn.Module):
                 if i == int(labels[0]):
                     trueclass = line[3:]
                     trueclass_id = int(labels[0])
-                    print("trueclass:",trueclass,labels[0])
+                    # print("trueclass:",trueclass,labels[0])
                     self.trueclass = trueclass
 
                 
 
             top_classes = [class_names[k] for k in top_prediciton_ids]
-            # print(top_classes, normalized_top_predictions_values)		
+            print(top_classes, normalized_top_predictions_values,"\n")	
+            plt.bar(top_classes,normalized_top_predictions_values)
+            plt.ylim(0,1)
+            plt.savefig(f'ground_table{str(j)}')
+            plt.close()
+
             # print("Predicted class: {}\n".format(predicted_class))
             # print("iteration",j)
             all_classifications.append(classification)
@@ -608,7 +624,57 @@ class RDTC(nn.Module):
         self.global_it +=1
         return classification, loss
 
+from graphviz import Digraph
 class Visualize_Tree():
+    def __init__(self,image_name) -> None:
+        os.environ["PATH"] += os.pathsep + r"C:\Users\diego\anaconda3\envs\rdtc\Lib\site-packages\graphviz"
+        self.graph = Digraph(format='png')
+        self.image_name = image_name
+        self.nodes = 0
+        self.attribute_id = defaultdict(lambda: len(self.attribute_id))
+
+    def add_node(self,attribute_name,attribute_bool,global_it,prune,j):
+        #update attribute
+        self.attribute_id[attribute_name]
+        #get current attribute id
+        current_id = self.attribute_id[attribute_name]
+        self.attribute_bool = attribute_bool
+        self.attribute_name = attribute_name
+        self.global_it = global_it
+        self.prune = prune
+        print(self.prune)
+
+        if (not self.prune):
+            #initialize current image
+            self.graph.node(str(current_id),'',shape='plain') 
+            self.graph.node(str(current_id),image='ground_truth.png')
+        
+            #initalize next image
+            self.graph.node(str(current_id+1),'',shape='plain') 
+            self.graph.node(str(current_id+1),image='ground_truth.png')
+
+            #initialize bar chart
+            self.graph.node(str(attribute_name),'',shape='plain')
+            self.graph.node(str(attribute_name),image=f'ground_table{str(j)}.png')       
+            
+            #make edge when node is already there
+            if len(self.attribute_id) >0 :            
+                self.add_edge(str(current_id),str(current_id+1))
+                self.add_edge_bar(str(current_id),str(attribute_name))
+        
+            self.previous_name = attribute_name
+
+    def add_edge(self,previous_id,current_id):
+        self.graph.edge(previous_id,current_id,label=f'{self.attribute_name}={str(self.attribute_bool)}')
+        self.graph.render(f'output_{self.global_it}')
+    
+    def add_edge_bar(self,previous_id,current_id):
+        self.graph.edge(previous_id,current_id)
+        self.graph.render(f'output_{self.global_it}')
+
+#region old tree
+
+class Visualize_Tree_Old():
     def __init__(self,image_name) -> None:
         os.environ["PATH"] += os.pathsep + r"C:\Users\diego\anaconda3\envs\rdtc\Lib\site-packages"
         self.graph = pydot.Dot('my_graph', graph_type='graph', bgcolor='white')
@@ -640,6 +706,8 @@ class Visualize_Tree():
             # my_edge = pydot.Edge(self.previous_id,current_id,label=self.attribute_bool)
             # self.graph.add_edge(my_edge)           
             # self.graph.write_png(f'data/cub/decision_tree/img{self.attribute_name}output.png')
+        else:
+            self.add_edge(self.tru)
         
         self.previous_id = current_id
 
@@ -650,4 +718,4 @@ class Visualize_Tree():
      
        
         #self.graph.write_png(f'data/cub/decision_tree/img{self.global_it}output.png')
-       
+#endregion

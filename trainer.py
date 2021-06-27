@@ -78,7 +78,9 @@ class Trainer:
 
                 print("\nGround truth class: {}\n".format(label_name))
                 plt.imshow(tensor_image)
+                plt.imsave("ground_truth.png",tensor_image)
                 plt.show()
+                plt.close()
                 f1.close()
 
 

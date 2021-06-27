@@ -1,0 +1,122 @@
+digraph {
+	1 [label="" shape=plain]
+	1 [image="ground_truth.png"]
+	2 [label="" shape=plain]
+	2 [image="ground_truth.png"]
+	has_breast_colororange
+ [label="" shape=plain]
+	has_breast_colororange
+ [image="ground_table0.png"]
+	1 -> 2 [label="has_breast_colororange
+=False"]
+	1 -> has_breast_colororange
+
+	2 [label="" shape=plain]
+	2 [image="ground_truth.png"]
+	3 [label="" shape=plain]
+	3 [image="ground_truth.png"]
+	has_wing_colorblack
+ [label="" shape=plain]
+	has_wing_colorblack
+ [image="ground_table1.png"]
+	2 -> 3 [label="has_wing_colorblack
+=False"]
+	2 -> has_wing_colorblack
+
+	3 [label="" shape=plain]
+	3 [image="ground_truth.png"]
+	4 [label="" shape=plain]
+	4 [image="ground_truth.png"]
+	has_belly_colorbuff
+ [label="" shape=plain]
+	has_belly_colorbuff
+ [image="ground_table2.png"]
+	3 -> 4 [label="has_belly_colorbuff
+=False"]
+	3 -> has_belly_colorbuff
+
+	4 [label="" shape=plain]
+	4 [image="ground_truth.png"]
+	5 [label="" shape=plain]
+	5 [image="ground_truth.png"]
+	"has_sizevery_large_(32_-_72_in)
+" [label="" shape=plain]
+	"has_sizevery_large_(32_-_72_in)
+" [image="ground_table3.png"]
+	4 -> 5 [label="has_sizevery_large_(32_-_72_in)
+=False"]
+	4 -> "has_sizevery_large_(32_-_72_in)
+"
+	5 [label="" shape=plain]
+	5 [image="ground_truth.png"]
+	6 [label="" shape=plain]
+	6 [image="ground_truth.png"]
+	has_upperparts_colororange
+ [label="" shape=plain]
+	has_upperparts_colororange
+ [image="ground_table4.png"]
+	5 -> 6 [label="has_upperparts_colororange
+=True"]
+	5 -> has_upperparts_colororange
+
+	6 [label="" shape=plain]
+	6 [image="ground_truth.png"]
+	7 [label="" shape=plain]
+	7 [image="ground_truth.png"]
+	"has_back_patternmulti-colored
+" [label="" shape=plain]
+	"has_back_patternmulti-colored
+" [image="ground_table5.png"]
+	6 -> 7 [label="has_back_patternmulti-colored
+=True"]
+	6 -> "has_back_patternmulti-colored
+"
+	7 [label="" shape=plain]
+	7 [image="ground_truth.png"]
+	8 [label="" shape=plain]
+	8 [image="ground_truth.png"]
+	has_nape_colorblack
+ [label="" shape=plain]
+	has_nape_colorblack
+ [image="ground_table6.png"]
+	7 -> 8 [label="has_nape_colorblack
+=False"]
+	7 -> has_nape_colorblack
+
+	8 [label="" shape=plain]
+	8 [image="ground_truth.png"]
+	9 [label="" shape=plain]
+	9 [image="ground_truth.png"]
+	has_head_patterneyering
+ [label="" shape=plain]
+	has_head_patterneyering
+ [image="ground_table7.png"]
+	8 -> 9 [label="has_head_patterneyering
+=True"]
+	8 -> has_head_patterneyering
+
+	9 [label="" shape=plain]
+	9 [image="ground_truth.png"]
+	10 [label="" shape=plain]
+	10 [image="ground_truth.png"]
+	has_upperparts_colorrufous
+ [label="" shape=plain]
+	has_upperparts_colorrufous
+ [image="ground_table8.png"]
+	9 -> 10 [label="has_upperparts_colorrufous
+=False"]
+	9 -> has_upperparts_colorrufous
+
+	10 [label="" shape=plain]
+	10 [image="ground_truth.png"]
+	11 [label="" shape=plain]
+	11 [image="ground_truth.png"]
+	as_bill_shapespatulate
+ [label="" shape=plain]
+	as_bill_shapespatulate
+ [image="ground_table9.png"]
+	10 -> 11 [label="as_bill_shapespatulate
+=False"]
+	10 -> as_bill_shapespatulate
+
+}

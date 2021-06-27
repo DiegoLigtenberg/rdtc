@@ -1,0 +1,34 @@
+digraph {
+	0 [label="" shape=plain]
+	0 [image="ground_truth.png" rotation=90]
+	1 [label="" shape=plain]
+	1 [image="ground_truth.png" rotate=120]
+	"Attribute_name has_leg_colorolive " [label="" shape=plain]
+	"Attribute_name has_leg_colorolive " [image="ground_table.png" orientation=90]
+	0 -> 1 [label="Attribute_name has_leg_colorolive =True"]
+	0 -> "Attribute_name has_leg_colorolive "
+	1 [label="" shape=plain]
+	1 [image="ground_truth.png" rotation=90]
+	2 [label="" shape=plain]
+	2 [image="ground_truth.png" rotate=120]
+	"Attribute_name has_leg_coloroliv2e " [label="" shape=plain]
+	"Attribute_name has_leg_coloroliv2e " [image="ground_table.png" orientation=90]
+	1 -> 2 [label="Attribute_name has_leg_coloroliv2e =True"]
+	1 -> "Attribute_name has_leg_coloroliv2e "
+	2 [label="" shape=plain]
+	2 [image="ground_truth.png" rotation=90]
+	3 [label="" shape=plain]
+	3 [image="ground_truth.png" rotate=120]
+	"Attribute_name has_leg_colorol3ive " [label="" shape=plain]
+	"Attribute_name has_leg_colorol3ive " [image="ground_table.png" orientation=90]
+	2 -> 3 [label="Attribute_name has_leg_colorol3ive =False"]
+	2 -> "Attribute_name has_leg_colorol3ive "
+	3 [label="" shape=plain]
+	3 [image="ground_truth.png" rotation=90]
+	4 [label="" shape=plain]
+	4 [image="ground_truth.png" rotate=120]
+	"Attribute_name has_leg3_colorol3ive " [label="" shape=plain]
+	"Attribute_name has_leg3_colorol3ive " [image="ground_table.png" orientation=90]
+	3 -> 4 [label="Attribute_name has_leg3_colorol3ive =False"]
+	3 -> "Attribute_name has_leg3_colorol3ive "
+}
